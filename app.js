@@ -4,13 +4,17 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 const cors = require('cors');
+const { createHandler } = require('graphql-http/lib/use/express');
+const { schema, rootValue } = require('./graphql/schema');
 
 const mongoose = require('mongoose');
 
 main().catch(err => console.log(err));
 
 async function main() {
-  await mongoose.connect('mongodb://127.0.0.1:27017/pbdb');
+  await mongoose.connect('mongodb://localhost:27017/pbdb')
+  .then(() => console.log('MongoDB connected'))
+  .catch((err) => console.error('MongoDB connection error:', err));
 }
 
 var indexRouter = require('./routes/index');
@@ -28,6 +32,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(cors());
+app.use('/graphql', createHandler({ schema, rootValue }));
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
