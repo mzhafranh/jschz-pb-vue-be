@@ -18,7 +18,7 @@ const schema = buildSchema(`
 
     type Query {
         fetchPhonebooks(query: String, page: Int, limit: Int, sort: String): PhonebookResult
-        getPhonebook(id: ID!): Phonebook
+        selectPhonebook(id: ID!): Phonebook
     }
 
     type Mutation {
@@ -52,7 +52,7 @@ const rootValue = {
 
     return {phonebooks, page:realPage, limit:realLimit, pages, total}
   },
-  getPhonebook: async ({ id }) => {
+  selectPhonebook: async ({ id }) => {
     return await Phonebook.findById(id);
   },
   addPhonebook: async ({ name, phone }) => {
@@ -66,7 +66,7 @@ const rootValue = {
       { new: true }
     );
   },
-  deleteUser: async ({ id }) => {
+  deletePhonebook: async ({ id }) => {
     return await Phonebook.findByIdAndDelete(id);
   },
 };
