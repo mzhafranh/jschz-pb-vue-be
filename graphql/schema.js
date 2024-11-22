@@ -30,9 +30,9 @@ const schema = buildSchema(`
 
 const rootValue = {
   fetchPhonebooks: async ({ query, page, limit, sort }) => {
-    const realPage = page || 1;
+    const realPage = page ? page : 1;
     const realSort = { ["name"]: sort === "asc" ? 1 : -1 };
-    const realLimit = limit || 10;
+    const realLimit = limit ? limit : 10;
     const offset = (realPage - 1) * limit;
     const filter = query ? 
                     {
@@ -50,7 +50,7 @@ const rootValue = {
     .skip(offset)
     .limit(realLimit);
 
-    return {phonebooks, realPage, realLimit, pages, total}
+    return {phonebooks, page:realPage, limit:realLimit, pages, total}
   },
   getPhonebook: async ({ id }) => {
     return await Phonebook.findById(id);
