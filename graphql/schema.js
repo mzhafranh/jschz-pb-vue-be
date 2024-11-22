@@ -8,9 +8,17 @@ const schema = buildSchema(`
         phone: String
     }
 
+    type PhonebookResult {
+      phonebooks: [Phonebook]
+      page: Int
+      limit: Int
+      pages: Int
+      total: Int
+    }
+
     type Query {
-        phonebooks(query: String, offset: Int!, limit: Int!): [Phonebook]
-        phonebook(id: ID!): Phonebook
+        fetchPhonebooks(query: String, page: Int, limit: Int, sort: String): PhonebookResult
+        getPhonebook(id: ID!): Phonebook
     }
 
     type Mutation {
@@ -21,35 +29,46 @@ const schema = buildSchema(`
 `)
 
 const rootValue = {
-    phonebooks: async ({ query, offset, limit }) => {
-      const filter = {};
-      if (query) {
-        filter.$or = [
-          { name: { $regex: query, $options: 'i' } },
-          { phone: { $regex: query, $options: 'i' } },
-        ];
-      }
-      return await Phonebook.find(filter)
-      .skip(offset)
-      .limit(limit);
-    },
-    phonebook: async ({ id }) => {
-      return await Phonebook.findById(id);
-    },
-    addPhonebook: async ({ name, phone }) => {
-      const phonebook = new Phonebook({ name, phone });
-      return await phonebook.save();
-    },
-    updatePhonebook: async ({ id, name, phone}) => {
-      return await Phonebook.findByIdAndUpdate(
-        id,
-        { name, phone },
-        { new: true }
-      );
-    },
-    deleteUser: async ({ id }) => {
-      return await Phonebook.findByIdAndDelete(id);
-    },
-  };
-  
-  module.exports = { schema, rootValue };
+  fetchPhonebooks: async ({ query, page, limit, sort }) => {
+    const realPage = page || 1;
+    const realSort = { ["name"]: sort === "asc" ? 1 : -1 };
+    const realLimit = limit || 10;
+    const offset = (realPage - 1) * limit;
+    const filter = query ? 
+                    {
+                      $or: [
+                        { name: { $regex: query, $options: 'i' } },
+                        { phone: { $regex: query, $options: 'i' } },
+                      ],
+                    } : {};
+
+    const total = await Phonebook.countDocuments(filter);
+    const pages = Math.ceil(total / realLimit)
+
+    const phonebooks = await Phonebook.find(filter)
+    .sort(realSort)
+    .skip(offset)
+    .limit(realLimit);
+
+    return {phonebooks, realPage, realLimit, pages, total}
+  },
+  getPhonebook: async ({ id }) => {
+    return await Phonebook.findById(id);
+  },
+  addPhonebook: async ({ name, phone }) => {
+    const phonebook = new Phonebook({ name, phone });
+    return await phonebook.save();
+  },
+  updatePhonebook: async ({ id, name, phone }) => {
+    return await Phonebook.findByIdAndUpdate(
+      id,
+      { name, phone },
+      { new: true }
+    );
+  },
+  deleteUser: async ({ id }) => {
+    return await Phonebook.findByIdAndDelete(id);
+  },
+};
+
+module.exports = { schema, rootValue };
