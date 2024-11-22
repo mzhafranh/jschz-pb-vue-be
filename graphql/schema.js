@@ -9,7 +9,7 @@ const schema = buildSchema(`
     }
 
     type Query {
-        phonebooks: [Phonebook]
+        phonebooks(query: String, offset: Int!, limit: Int!): [Phonebook]
         phonebook(id: ID!): Phonebook
     }
 
@@ -21,8 +21,17 @@ const schema = buildSchema(`
 `)
 
 const rootValue = {
-    phonebooks: async () => {
-      return await Phonebook.find();
+    phonebooks: async ({ query, offset, limit }) => {
+      const filter = {};
+      if (query) {
+        filter.$or = [
+          { name: { $regex: query, $options: 'i' } },
+          { phone: { $regex: query, $options: 'i' } },
+        ];
+      }
+      return await Phonebook.find(filter)
+      .skip(offset)
+      .limit(limit);
     },
     phonebook: async ({ id }) => {
       return await Phonebook.findById(id);
