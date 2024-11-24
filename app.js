@@ -4,8 +4,9 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 const cors = require('cors');
-const { createHandler } = require('graphql-http/lib/use/express');
+const { graphqlUploadExpress } = require('graphql-upload');
 const { schema, rootValue } = require('./graphql/schema');
+const { createHandler } = require('graphql-http/lib/use/express');
 
 const mongoose = require('mongoose');
 
@@ -33,6 +34,20 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cors());
+app.use(graphqlUploadExpress({
+  maxFileSize: 10000000,  // Set max size as needed
+  maxFiles: 1,
+  onFileUploadStart: (file) => {
+    console.log(`Uploading file: ${file.filename}`);
+  }
+}));
+
+
+app.use((req, res, next) => {
+  console.log('Headers:', req.headers);  // Log request headers to verify content type
+  console.log('Body:', req.body);        // Log request body to inspect payload
+  next();
+});
 app.use('/graphql', createHandler({ schema, rootValue }));
 
 app.use('/', indexRouter);

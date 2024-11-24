@@ -1,4 +1,6 @@
 const { buildSchema } = require('graphql');
+const { GraphQLUpload } = require('graphql-upload');
+const path = require('path');
 const Phonebook = require('../models/Phonebook');
 
 const schema = buildSchema(`
@@ -21,10 +23,13 @@ const schema = buildSchema(`
         selectPhonebook(id: ID!): Phonebook
     }
 
+    scalar Upload
+
     type Mutation {
         addPhonebook(name: String!, phone:String!): Phonebook
         updatePhonebook(id: ID!, name: String, phone: String): Phonebook
         deletePhonebook(id: ID!): Phonebook
+        uploadAvatar(id: ID!, avatar: Upload!): Phonebook
     }
 `)
 
@@ -69,6 +74,38 @@ const rootValue = {
   deletePhonebook: async ({ id }) => {
     return await Phonebook.findByIdAndDelete(id);
   },
+  Upload: GraphQLUpload,
+  uploadAvatar: async ({ id, avatar }) => {
+    console.log('Received avatar:', avatar); // Log to inspect the avatar object
+  
+    try {
+      const { createReadStream, filename } = await avatar;
+      const phonebookFind = await Phonebook.findById(id);
+      if (!phonebookFind) {
+        throw new Error('Phonebook entry not found');
+      }
+  
+      const username = phonebookFind.name;
+      const avatarFilename = username + Date.now() + path.extname(filename);
+      const filePath = path.join(__dirname, '..', 'public', 'uploads', avatarFilename);
+  
+      const stream = createReadStream();
+      await new Promise((resolve, reject) => {
+        const writeStream = require('fs').createWriteStream(filePath);
+        stream.pipe(writeStream)
+          .on('finish', resolve)
+          .on('error', reject);
+      });
+  
+      phonebookFind.avatar = avatarFilename;
+      await phonebookFind.save();
+  
+      return phonebookFind;
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw new Error(error.message);
+    }
+  }  
 };
 
 module.exports = { schema, rootValue };
