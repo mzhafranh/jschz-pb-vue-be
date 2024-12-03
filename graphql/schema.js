@@ -68,7 +68,7 @@ const rootValue = {
   updatePhonebook: async ({ id, name, phone }) => {
     return await Phonebook.findByIdAndUpdate(
       id,
-      { name, phone },
+      { name, phone, avatar },
       { new: true }
     );
   },
