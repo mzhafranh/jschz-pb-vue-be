@@ -8,6 +8,7 @@ const schema = buildSchema(`
         id: ID
         name: String
         phone: String
+        avatar: String
     }
 
     type PhonebookResult {
@@ -75,10 +76,9 @@ const rootValue = {
     return await Phonebook.findByIdAndDelete(id);
   },
   Upload: GraphQLUpload,
-  uploadAvatar: async ({ id, avatar }) => {
-    console.log('Received avatar:', avatar); // Log to inspect the avatar object
-  
+  uploadAvatar: async ({ id, avatar }) => { 
     try {
+      console.log('Received avatar:', avatar); // Log to inspect the avatar object
       const { createReadStream, filename } = await avatar;
       const phonebookFind = await Phonebook.findById(id);
       if (!phonebookFind) {

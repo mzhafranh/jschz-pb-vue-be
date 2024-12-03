@@ -7,6 +7,8 @@ const cors = require('cors');
 const { graphqlUploadExpress } = require('graphql-upload');
 const { schema, rootValue } = require('./graphql/schema');
 const { createHandler } = require('graphql-http/lib/use/express');
+const Phonebook = require('./models/Phonebook');
+var fileUpload = require("express-fileupload");
 
 const mongoose = require('mongoose');
 
@@ -33,7 +35,52 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(fileUpload({
+  createParentPath: true,
+}) );
 app.use(cors());
+
+app.post('/graphql/avatar/:id', async function (req, res) {
+  try {
+    // Check if files are uploaded
+    if (!req.files || !req.files.avatar) {
+      return res.status(400).send('No files were uploaded.');
+    }
+
+    const id = req.params.id;
+
+    // Find the phonebook entry using Mongoose
+    const phonebookFind = await Phonebook.findById(id);
+    if (!phonebookFind) {
+      return res.status(404).send('Phonebook entry not found.');
+    }
+
+    const avatar = req.files.avatar;
+    const username = phonebookFind.name; // Directly access Mongoose fields
+    const avatarFilename = username + Date.now() + path.extname(avatar.name);
+    const filePath = path.join(__dirname, 'public', 'uploads', avatarFilename);
+
+    console.log(filePath)
+
+    // Move file to the desired location
+    avatar.mv(filePath, async (err) => {
+      if (err) {
+        return res.status(500).send(err);
+      }
+
+      // Update the phonebook entry with the avatar's filename
+      phonebookFind.avatar = avatarFilename;
+      await phonebookFind.save();
+
+      console.log('Updated phonebook entry:', phonebookFind);
+
+      res.status(201).json(phonebookFind); // Return the updated phonebook entry
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 app.use(graphqlUploadExpress({
   maxFileSize: 10000000,  // Set max size as needed
   maxFiles: 1,
@@ -42,12 +89,12 @@ app.use(graphqlUploadExpress({
   }
 }));
 
-
 app.use((req, res, next) => {
   console.log('Headers:', req.headers);  // Log request headers to verify content type
   console.log('Body:', req.body);        // Log request body to inspect payload
   next();
 });
+
 app.use('/graphql', createHandler({ schema, rootValue }));
 
 app.use('/', indexRouter);
